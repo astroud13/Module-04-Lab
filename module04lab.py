@@ -4,71 +4,65 @@
 #Description: CRUD API for a Book. 
 
 #Import flask framework
-from flask import Flask, request, jsonify
+from flask import Flask, request
 #Import SQLAlchemy for database management
 from flask_sqlalchemy import SQLAlchemy
 
-app = Flask(__name__)
+app = Flask(__name__)  #Initialize Flask app
 
-#Configure SQLite database
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///books.db'
-db = SQLAlchemy(app)
+#Configure database URI (SQLite in this case)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data.db'
 
-#Define Book model
-class Book(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    book_name = db.Column(db.String(100), nullable=False)
-    author = db.Column(db.String(100), nullable=False)
-    publisher = db.Column(db.String(100), nullable=False)
+db = SQLAlchemy(app)  #Initialize SQLAlchemy object with Flask app
+
+
+class Book(db.Model):  #Define Book model
+    id = db.Column(db.Integer, primary_key=True)  #Primary key column for unique identification
+    book_name = db.Column(db.String(80), unique=True, nullable=False)  #Column for book name
+    author = db.Column(db.String(80), nullable=False)  #Column for author name
+    publisher = db.Column(db.String(120))  #Column for publisher name
 
     def __repr__(self):
-        return f"Book(id={self.id}, book_name={self.book_name}, author={self.author}, publisher={self.publisher})"
+        return f"{self.book_name} - {self.author} - {self.publisher}"
 
-#Route to create new book
-@app.route('/books', methods=['POST'])
-def create_book():
-    data = request.json
-    new_book = Book(book_name=data['book_name'], author=data['author'], publisher=data['publisher'])
-    db.session.add(new_book)
-    db.session.commit()
-    return jsonify({'message': 'Book created successfully'}), 201
 
-#Route to get all books
-@app.route('/books', methods=['GET'])
+@app.route('/')  #Define route for homepage
+def index():
+    return 'Hello!'  #Return simple greeting
+
+
+@app.route('/books')  #Define route to get all books
 def get_books():
-    books = Book.query.all()
-    output = [{'id': book.id, 'book_name': book.book_name, 'author': book.author, 'publisher': book.publisher} for book in books]
-    return jsonify({'books': output})
+    books = Book.query.all()  #Query all books from database
+    output = []  #Initialize an empty list to store book data
+    for book in books:
+        book_data = {'book_name': book.book_name, 'author': book.author, 'publisher': book.publisher}  #Extract book data
+        output.append(book_data)  #Append book data to output list
+    return {"books": output}  #Return a JSON object containing all books
 
-#Route to get specific book by ID
-@app.route('/books/<int:book_id>', methods=['GET'])
-def get_book(book_id):
-    book = Book.query.get_or_404(book_id)
-    return jsonify({'id': book.id, 'book_name': book.book_name, 'author': book.author, 'publisher': book.publisher})
 
-#Route to update book
-@app.route('/books/<int:book_id>', methods=['PUT'])
-def update_book(book_id):
-    book = Book.query.get_or_404(book_id)
-    data = request.json
-    book.book_name = data['book_name']
-    book.author = data['author']
-    book.publisher = data['publisher']
-    db.session.commit()
-    return jsonify({'message': 'Book updated successfully'})
+@app.route('/books/<id>')  #Define route to get specific book by ID
+def get_book(id):
+    book = Book.query.get_or_404(id)  #Query book by its ID or return a 404 error if not found
+    return {"book_name": book.book_name, "author": book.author, "publisher": book.publisher}  # Return book data
 
-#Route to delete book
-@app.route('/books/<int:book_id>', methods=['DELETE'])
-def delete_book(book_id):
-    book = Book.query.get_or_404(book_id)
-    db.session.delete(book)
-    db.session.commit()
-    return jsonify({'message': 'Book deleted successfully'})
 
-if __name__ == '__main__':
-    #Create database tables
-    with app.app_context():
-        db.create_all()
-    #Run flask application
-    app.run(debug=True)
+@app.route('/books', methods=['POST'])  #Define route to add a new book
+def add_book():
+    book = Book(book_name=request.json['book_name'],  #Extract book details from request JSON
+                author=request.json['author'],
+                publisher=request.json['publisher'])
+    db.session.add(book)  #Add new book to database session
+    db.session.commit()  #Commit changes to database
+    return {'id': book.id}  #Return ID of newly added book
+
+
+@app.route('/books/<id>', methods=['DELETE'])  #Define route to delete a book by its ID
+def delete_book(id):
+    book = Book.query.get(id)  #Query book by its ID
+    if book is None:  #If book is not found
+        return {"error": "not found"}  #Return an error message
+    db.session.delete(book)  #Delete book from the database session
+    db.session.commit()  #Commit changes to the database
+    return {"message": "Book deleted successfully"}  #Return success message
 
