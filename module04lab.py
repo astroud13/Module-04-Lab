@@ -1,7 +1,7 @@
 #Module 4 Lab - Case Study: Python APIs
 #Created by Austin Stroud
 #File name: module04lab.py 
-#Description: 
+#Description: CRUD API for a Book. 
 
 #Import flask framework
 from flask import Flask, request, jsonify
